@@ -8,6 +8,7 @@ SET( TESTS_LIST
   str_utils.cpp
   lexer.cpp
   simple_templates.cpp
+  json.cpp
 )
 
 

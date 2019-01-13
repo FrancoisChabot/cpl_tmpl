@@ -19,7 +19,12 @@ class Context {
     return found->second;
   }
 
-  void add_root(std::string key, Data_provider data) {
+  template <typename T>
+  void add_root(std::string key, const T& data) {
+    add_root_provider(key, data_provider(data));
+  }
+
+  void add_root_provider(std::string key, Data_provider data) {
     data_roots_.emplace(std::move(key), data);
   }
 

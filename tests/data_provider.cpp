@@ -20,6 +20,7 @@ TEST_CASE("String", "[data_provider]") {
 }
 
 TEST_CASE("Lookup", "[data_provider]") {
+  using map_t = std::map<std::string, std::string>;
   std::map<std::string, std::string> data = {{"a", "b"}};
 
   REQUIRE(get(cpl_tmpl::data_provider(data).get("a")) == "b");

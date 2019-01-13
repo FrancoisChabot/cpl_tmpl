@@ -73,6 +73,10 @@ bool Token_iterator::operator==(const Token_iterator& rhs) const {
          (data_.length() == rhs.data_.length());
 }
 
+bool Token_iterator::operator!=(const Token_iterator& rhs) const {
+  return !((*this) == rhs);
+}
+
 Token_iterator& Token_iterator::operator++() {
   *this = Token_iterator(data_.substr(token_.raw.length()));
   return *this;

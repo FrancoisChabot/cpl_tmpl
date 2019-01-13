@@ -43,6 +43,7 @@ struct Token_iterator {
 
   Token_iterator& operator++();
   bool operator==(const Token_iterator& rhs) const;
+  bool operator!=(const Token_iterator& rhs) const;
 
   Token_iterator& operator=(const Token_iterator&) = default;
 

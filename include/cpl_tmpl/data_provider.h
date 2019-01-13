@@ -47,68 +47,65 @@ class Data_provider {
 };
 
 template <typename T>
-auto get_provider_impl();
+Data_provider data_provider(const T& v);
 
-template <typename T>
-class Data_provider_impl : public Data_provider::Impl {
+template <typename T, typename ParentT = Data_provider::Impl>
+class Value_provider_impl : public ParentT {
  public:
   void get(const void* data, Stream_t& dst) const override {
     const T* as_t = reinterpret_cast<const T*>(data);
-    dst << *as_t;
+    Data_traits<T>::print(*as_t, dst);
   }
 };
 
-template <typename IteT>
-class Sequence_provider_impl : public Data_provider::Impl {
+template <typename T, typename ParentT = Data_provider::Impl>
+class Sequence_provider_impl : public ParentT {
  public:
   void visit(const void* data,
              std::function<void(Data_provider)> cb) const override {
     const T* as_t = reinterpret_cast<const T*>(data);
-    auto child_provider = get_provider_impl<T>();
 
     for (const auto& i : *as_t) {
-      cb(Data_provider(&i, child_provider));
+      cb(data_provider(i));
     }
   }
 };
 
-template <typename T>
-class Mapping_provider_impl : public Data_provider::Impl {
+template <typename T, typename ParentT = Data_provider::Impl>
+class Mapping_provider_impl : public ParentT {
  public:
   Data_provider get(const void* data, std::string_view key) const override {
     const T* as_t = reinterpret_cast<const T*>(data);
 
-    using key_t = typename T::key_type;
-    using val_t = typename T::mapped_type;
-
-    auto found = as_t->find(key_t(key));
-
-    if (found == as_t->end()) {
-      return Data_provider();
-    }
-
-    auto child_provider = get_provider_impl<val_t>();
-    return Data_provider(&found->second, child_provider);
+    return data_provider(*Data_traits<T>::lookup(*as_t, key));
   }
 };
 
-template <typename T>
-auto get_provider_impl() {
-  if constexpr (is_sequence_v<T>) {
-    static Sequence_provider_impl<T> provider;
-    return &provider;
-  } else if constexpr (is_mapping_v<T>) {
-    static Mapping_provider_impl<T> provider;
-    return &provider;
-  } else {
-    static Data_provider_impl<T> provider;
-    return &provider;
-  }
-}
+template <typename T, typename Enable = void>
+struct get_provider_impl_t {
+  using traits = Data_traits<T>;
+
+  using with_value =
+      std::conditional_t<traits::is_value, Value_provider_impl<T>,
+                         Data_provider::Impl>;
+
+  using with_sequence =
+      std::conditional_t<traits::is_sequence,
+                         Sequence_provider_impl<T, with_value>, with_value>;
+
+  using with_mapping =
+      std::conditional_t<traits::is_mapping,
+                         Mapping_provider_impl<T, with_sequence>,
+                         with_sequence>;
+
+  using type = with_mapping;
+};
 
 template <typename T>
 Data_provider data_provider(const T& v) {
-  return Data_provider(&v, get_provider_impl<T>());
+  using provider_t = typename get_provider_impl_t<T>::type;
+  static provider_t provider;
+  return Data_provider(&v, &provider);
 }
 
 }  // namespace cpl_tmpl

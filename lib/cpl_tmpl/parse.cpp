@@ -17,19 +17,21 @@ Expr_ptr parse_primary(Token_iterator& b, Token_iterator e);
 Expr_ptr parse_parens(Token_iterator& b, Token_iterator e);
 
 Expr_ptr parse_primary(Token_iterator& b, Token_iterator e) {
+  Expr_ptr result;
   switch (b->type) {
     case Token_t::identifier:
-      return std::make_unique<ast::Id_ref>(b->raw);
+      result = std::make_unique<ast::Id_ref>(b->raw);
+      ++b;
       break;
     case Token_t::number:
       break;
     case Token_t::parens_open:
-      return parse_parens(b, e);
+      result = parse_parens(b, e);
       break;
     default:
       break;
   }
-  return nullptr;
+  return result;
 }
 
 Expr_ptr parse_parens(Token_iterator& b, Token_iterator e) {
@@ -54,6 +56,21 @@ Expr_ptr parse_expr(Token_iterator& b, Token_iterator e) {
   }
 
   auto result = parse_primary(b, e);
+
+  while (b != e) {
+    switch (b->type) {
+      case Token_t::period:
+        ++b;
+        if (b == e || b->type != Token_t::identifier) {
+          throw std::runtime_error("expecting identifier");
+        }
+        result = std::make_unique<ast::Resolve>(std::move(result), b->raw);
+        ++b;
+        break;
+      default:
+        throw std::runtime_error("extremely confused");
+    }
+  }
 
   return result;
 }

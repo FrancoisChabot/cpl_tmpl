@@ -11,7 +11,7 @@ std::string render(std::string data,
 
   cpl_tmpl::Context ctx;
   for (const auto& e : env) {
-    ctx.add_root(e.first, cpl_tmpl::data_provider(e.second));
+    ctx.add_root(e.first, e.second);
   }
 
   cpl_tmpl::Interp_template(data).render(dst, ctx);
