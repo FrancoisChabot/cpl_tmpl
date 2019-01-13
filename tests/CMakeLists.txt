@@ -4,8 +4,10 @@ add_library(catch_main catch_main.cpp)
 set_target_properties(catch_main PROPERTIES FOLDER "tests")
 
 SET( TESTS_LIST
+  data_provider.cpp
   str_utils.cpp
   lexer.cpp
+  simple_templates.cpp
 )
 
 

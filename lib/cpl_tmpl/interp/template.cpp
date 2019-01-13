@@ -9,9 +9,9 @@ Interp_template_impl::Interp_template_impl(std::string data)
   operations_ = parse(data_);
 }
 
-void Interp_template_impl::render(Stream_t& dst) const {
+void Interp_template_impl::render(Stream_t& dst, const Context& ctx) const {
   for (const auto& op : operations_) {
-    op->render(dst);
+    op->render(dst, ctx);
   }
 }
 
@@ -21,5 +21,7 @@ Interp_template::Interp_template(std::string data)
 
 Interp_template::~Interp_template() {}
 
-void Interp_template::render(Stream_t& dst) const { impl_->render(dst); }
+void Interp_template::render(Stream_t& dst, const Context& ctx) const {
+  impl_->render(dst, ctx);
+}
 }  // namespace cpl_tmpl

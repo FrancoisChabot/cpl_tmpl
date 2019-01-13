@@ -2,12 +2,12 @@
 #include "cpl_tmpl/lex.h"
 #include "cpl_tmpl/template.h"
 
+#include <algorithm>
 #include <cassert>
-#include <regex>
+#include <functional>
 
 namespace cpl_tmpl {
 namespace {
-const std::regex tag_regex(R"TAG(\{%(.*?(?=%\}))%}|\{\{(.*?(?=\}\}))\}\})TAG");
 
 using Expr_ptr = std::unique_ptr<ast::Expr>;
 
@@ -55,67 +55,79 @@ Expr_ptr parse_expr(Token_iterator& b, Token_iterator e) {
 
   auto result = parse_primary(b, e);
 
-  return nullptr;
-}
-
-std::unique_ptr<Template_op> eval_match(std::string_view match) {
-  assert(match.length() >= 4);
-  std::unique_ptr<Template_op> result;
-
-  switch (match[1]) {
-    case '%':
-
-      break;
-    case '{':
-      result = std::make_unique<Print_op>(
-          parse_expr(match.substr(2, match.length() - 4)));
-      break;
-    default:
-      assert(false);
-      break;
-  }
   return result;
 }
+
 }  // namespace
+
+std::unique_ptr<Template_op> handle_print_directive(
+    std::string_view::iterator& ite, std::string_view::iterator end) {
+  const std::string_view tag_end_str = "}}";
+  std::advance(ite, 2);
+  auto tag_end = std::search(
+      ite, end,
+      std::boyer_moore_searcher(tag_end_str.begin(), tag_end_str.end()));
+
+  if (tag_end == end) {
+    throw std::runtime_error("unterminated tag");
+  }
+
+  std::string_view expr_string(&*ite, tag_end - ite);
+  ite = std::next(tag_end, 2);
+
+  return std::make_unique<Print_op>(parse_expr(expr_string));
+}
+
+std::unique_ptr<Template_op> handle_scoped_directive(
+    std::string_view::iterator& ite, std::string_view::iterator end) {
+  throw std::runtime_error("no");
+}
 
 std::vector<std::unique_ptr<Template_op>> parse(std::string_view text) {
   using Ite = std::string_view::iterator;
 
   std::vector<std::unique_ptr<Template_op>> result;
 
-  std::size_t last_match_end = 0;
+  auto ite = text.begin();
+  auto end = text.end();
 
-  std::regex_iterator<Ite> ite(text.begin(), text.end(), tag_regex);
-  std::regex_iterator<Ite> end;
-
-  for (; ite != end; ++ite) {
-    auto match_pos = ite->position();
-    auto match_len = ite->length();
-
-    // The amount of raw data between the last match and now.
-    auto raw_prefix_len = match_pos - last_match_end;
-
-    if (raw_prefix_len > 0) {
-      auto prefix = text.substr(last_match_end, raw_prefix_len);
-      result.emplace_back(std::make_unique<Print_raw_op>(prefix));
+  auto raw_start = text.begin();
+  auto consume_raw = [&](Ite raw_end) {
+    if (raw_end != raw_start) {
+      result.emplace_back(std::make_unique<Print_raw_op>(
+          std::string_view(&*raw_start, raw_end - raw_start)));
+      raw_start = raw_end;
     }
+  };
 
-    std::string_view match_view(text.data() + match_pos, match_len);
-    auto evaled_match = eval_match(match_view);
-    if (evaled_match) {
-      result.emplace_back(std::move(evaled_match));
+  while (true) {
+    // Advance to the next open brace
+    ite = std::find(ite, end, '{');
+
+    if (ite == end) break;
+
+    auto next = std::next(ite);
+    // Handle the last character being an open brace
+    if (ite == end) break;
+
+    switch (*next) {
+      case '{':
+        consume_raw(ite);
+        result.emplace_back(handle_print_directive(ite, end));
+        raw_start = ite;
+        break;
+      case '%':
+        consume_raw(ite);
+        result.emplace_back(handle_scoped_directive(ite, end));
+        raw_start = ite;
+        break;
+      default:
+        ite = std::next(next);
+        break;
     }
-
-    last_match_end += raw_prefix_len;
-    last_match_end += match_len;
   }
 
-  auto raw_suffix_len = text.length() - last_match_end;
-  if (raw_suffix_len > 0) {
-    auto suffix = text.substr(last_match_end, raw_suffix_len);
-    result.emplace_back(std::make_unique<Print_raw_op>(suffix));
-  }
-
+  consume_raw(ite);
   return result;
 }
 }  // namespace cpl_tmpl

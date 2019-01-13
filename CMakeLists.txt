@@ -13,6 +13,7 @@ SET(LIB_SRC
   lib/cpl_tmpl/interp/ops.h
   lib/cpl_tmpl/interp/template.cpp
 
+  lib/cpl_tmpl/data_provider.cpp
   lib/cpl_tmpl/lex.cpp
   lib/cpl_tmpl/lex.h
   lib/cpl_tmpl/parse.cpp
@@ -32,7 +33,6 @@ target_include_directories(Cpl_tmpl PUBLIC
 )
 
 target_compile_features(Cpl_tmpl PUBLIC cxx_std_17)
-
 install(TARGETS Cpl_tmpl 
   EXPORT Cpl_tmplTargets
   ARCHIVE DESTINATION lib ${CMAKE_INSTALL_LIBDIR} )
